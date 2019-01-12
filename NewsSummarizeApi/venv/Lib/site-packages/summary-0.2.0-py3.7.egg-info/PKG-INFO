@@ -1,0 +1,32 @@
+Metadata-Version: 1.1
+Name: summary
+Version: 0.2.0
+Summary: Extractor to get main content from the web page.
+Home-page: https://github.com/after12am/summary
+Author: Satoshi Okami
+Author-email: me.after.12am@gmail.com
+License: MIT License
+Download-URL: https://github.com/after12am/summary/archive/master.zip
+Description: 
+        Extractor to get main content from the web page.
+         - guessed title of main content
+         - guessed main content
+         - guessed summarization
+         - candidate of main image
+        
+        Install
+           sudo easy_install summary
+        
+        Usages
+           visit at https://github.com/after12am/summary
+        
+Keywords: summary,extract,scraping,web
+Platform: UNKNOWN
+Classifier: Programming Language :: Python
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Development Status :: 4 - Beta
+Classifier: Operating System :: MacOS
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet
