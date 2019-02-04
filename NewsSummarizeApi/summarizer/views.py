@@ -17,7 +17,14 @@ from gensim.summarization import keywords
 from nltk.tokenize import RegexpTokenizer
 from nltk import sent_tokenize
 
-
+import re
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from textblob import Word
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, cohen_kappa_score, confusion_matrix
 # Create your views here.
 
 
@@ -35,6 +42,8 @@ from nltk import sent_tokenize
 
 
 class SummarizeView(views.APIView):
+    model = RandomForestClassifier(n_estimators=300, max_depth=150, n_jobs=1)
+    vect = TfidfVectorizer(stop_words='english', min_df=2)
 
     def post(self, request):
         averageTime = request.data.get('average_time_in_seconds')
@@ -48,8 +57,9 @@ class SummarizeView(views.APIView):
         sentences = self.sentence_extracter(features, text)
         # generalSummarySentences = sent_tokenize(summary)
         personalized_summary = self.summary_merge(summary, sentences, text)
-
-        yourdata= [{"title":"hkuh", "general_summary": summary, "personalized_summary": personalized_summary}]
+        self.ModelTrainer()
+        category = self.ContentClassifier(text)
+        yourdata= [{"title":"hkuh", "general_summary": summary, "personalized_summary": personalized_summary, "category": category}]
         results = SummarySerializer(yourdata, many=True).data
         return Response(results)
 
@@ -124,6 +134,72 @@ class SummarizeView(views.APIView):
                             index = index - 1
 
         return generalSummarySentences
+
+
+    def clean_str(self,string):
+        """
+        Tokenization/string cleaning for datasets.
+        Original taken from https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+        """
+        string = re.sub(r"\'s", "", string)
+        string = re.sub(r"\'ve", "", string)
+        string = re.sub(r"n\'t", "", string)
+        string = re.sub(r"\'re", "", string)
+        string = re.sub(r"\'d", "", string)
+        string = re.sub(r"\'ll", "", string)
+        string = re.sub(r",", "", string)
+        string = re.sub(r"!", " ! ", string)
+        string = re.sub(r"\(", "", string)
+        string = re.sub(r"\)", "", string)
+        string = re.sub(r"\?", "", string)
+        string = re.sub(r"'", "", string)
+        string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+        string = re.sub(r"[0-9]\w+|[0-9]", "", string)
+        string = re.sub(r"\s{2,}", " ", string)
+        return string.strip().lower()
+
+    # def vectorization(self):
+    #     vect = TfidfVectorizer(stop_words='english', min_df=2)
+    #     return vect
+
+    def ModelTrainer(self):
+        data = pd.read_csv('D:/Projects/Final year/NewsSummarizeApi/summarizer/dataset.csv', encoding="ISO-8859-1")
+        x = data['news'].tolist()
+        y = data['type'].tolist()
+
+        for index, value in enumerate(x):
+            x[index] = ' '.join([Word(word).lemmatize() for word in self.clean_str(value).split()])
+
+        # vect = TfidfVectorizer(stop_words='english', min_df=2)
+        Y = np.array(y)
+
+        X_train, X_test, y_train, y_test = train_test_split(x, Y, test_size=0.20, random_state=42)
+
+        print("train:", X_train)
+        print("test :", X_test)
+
+        X_train = self.vect.fit_transform(X_train)
+        X_test = self.vect.transform(X_test)
+
+
+        # model = RandomForestClassifier(n_estimators=300, max_depth=150, n_jobs=1)
+        self.model.fit(X_train, y_train)
+
+        y_pred = self.model.predict(X_test)
+        print(y_pred[-1])
+        c_mat = confusion_matrix(y_test, y_pred)
+        kappa = cohen_kappa_score(y_test, y_pred)
+        acc = accuracy_score(y_test, y_pred)
+        print("Confusion Matrix:\n", c_mat)
+        print("\nKappa: ", kappa)
+        print("\nAccuracy: ", acc)
+
+    def ContentClassifier(self, content):
+        x_new = ' '.join([Word(word).lemmatize() for word in self.clean_str(content).split()])
+        X_new = self.vect.transform([x_new])
+        new_y = self.model.predict(X_new)
+        return new_y
+
 
     # averageTime = int(input("\n Enter average time of user in seconds: "))
     # word = input("Enter personal interests separated by comma ")
